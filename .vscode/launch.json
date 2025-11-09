@@ -1,0 +1,24 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "C/C++ Runner: Debug Session",
+      "type": "cppdbg",
+      "request": "launch",
+      "args": [],
+      "stopAtEntry": false,
+      "externalConsole": true,
+      "cwd": "c:/Users/laraa/AppData/Local/Temp/9b6220ea-257e-4e11-b2e6-7fc8d3210130_MIF_c.zip.130/MIF_c/bmp_to_mif",
+      "program": "c:/Users/laraa/AppData/Local/Temp/9b6220ea-257e-4e11-b2e6-7fc8d3210130_MIF_c.zip.130/MIF_c/bmp_to_mif/build/Debug/outDebug",
+      "MIMode": "gdb",
+      "miDebuggerPath": "gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    }
+  ]
+}
