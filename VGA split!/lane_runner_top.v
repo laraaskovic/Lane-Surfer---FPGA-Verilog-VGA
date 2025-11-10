@@ -36,13 +36,11 @@ module lane_runner_top(
 );
 
     // VGA Parameters - 640x480 Resolution
+    //same as player thign
     parameter nX = 10;          // 10 bits for X (640 pixels, 2^10 = 1024)
     parameter nY = 9;           // 9 bits for Y (480 pixels, 2^9 = 512)
     parameter COLOR_DEPTH = 9;  // 9-bit color (RGB: 3-3-3)
     
-    // =====================================================
-    // Control Signals
-    // =====================================================
     wire Resetn;
     wire move_left_key, move_right_key;  // From buttons
     wire move_left_kb, move_right_kb;    // From keyboard
@@ -55,30 +53,23 @@ module lane_runner_top(
     assign move_left = move_left_key | move_left_kb;
     assign move_right = move_right_key | move_right_kb;
     
-    // =====================================================
     // Player Signals
-    // =====================================================
-    wire [2:0] player_lane;              // Current lane (0-4)
-    wire [nX-1:0] player_x;              // Player VGA X coordinate
-    wire [nY-1:0] player_y;              // Player VGA Y coordinate
+    wire [2:0] player_lane; // Current lane
+    wire [nX-1:0] player_x;            
+    wire [nY-1:0] player_y;            
     wire [COLOR_DEPTH-1:0] player_color; // Player pixel color
     wire player_write;                   // VGA write enable
     
-    // =====================================================
     // PS/2 Signals
-    // =====================================================
-    wire [7:0] ps2_key_data;
+    wire [7:0] ps2_key_data; //8 bit scan code from keyboard
     wire ps2_key_pressed;
     
-    // =====================================================
     // Button Synchronizers
-    // =====================================================
     sync left_sync (~KEY[1], Resetn, CLOCK_50, move_left_key);
     sync right_sync (~KEY[0], Resetn, CLOCK_50, move_right_key);
     
-    // =====================================================
     // PS/2 Keyboard Controller
-    // =====================================================
+    //copied from the demo file!!!!!
     PS2_Controller #(.INITIALIZE_MOUSE(0)) PS2 (
         .CLOCK_50(CLOCK_50),
         .reset(~Resetn),                    // Active HIGH reset
@@ -92,9 +83,7 @@ module lane_runner_top(
         .received_data_en(ps2_key_pressed)
     );
     
-    // =====================================================
     // Keyboard Decoder
-    // =====================================================
     keyboard_decoder KB_DEC (
         .clk(CLOCK_50),
         .reset(~Resetn),
@@ -104,9 +93,10 @@ module lane_runner_top(
         .right_arrow(move_right_kb)
     );
     
-    // =====================================================
+
+
+
     // Player Object (from player_object.v)
-    // =====================================================
     player_object PLAYER (
         .Resetn(Resetn),
         .Clock(CLOCK_50),
@@ -119,9 +109,7 @@ module lane_runner_top(
         .VGA_write(player_write)
     );
     
-    // =====================================================
     // VGA Adapter - 640x480 Resolution
-    // =====================================================
     vga_adapter VGA (
         .resetn(Resetn),
         .clock(CLOCK_50),
@@ -141,46 +129,39 @@ module lane_runner_top(
         defparam VGA.RESOLUTION = "640x480";
         defparam VGA.BACKGROUND_IMAGE = "image.colour.mif";
     
-    // =====================================================
-    // LED Display - Debug Information
-    // =====================================================
-    assign LEDR[2:0] = player_lane;        // Current lane (0-4)
-    assign LEDR[6:3] = 4'b0;               // Unused
+    // LED Display
+    assign LEDR[2:0] = player_lane;  
+    assign LEDR[6:3] = 4'b0;         
     assign LEDR[7] = move_left_kb;         // Left arrow pressed
     assign LEDR[8] = move_right_kb;        // Right arrow pressed
     assign LEDR[9] = ps2_key_pressed;      // PS/2 activity
-    
-    // =====================================================
-    // HEX Display - Show PS/2 Scan Code
-    // =====================================================
-    hex7seg H0 (ps2_key_data[3:0], HEX0);
-    hex7seg H1 (ps2_key_data[7:4], HEX1);
-
 endmodule
 
 
-// =========================================================================
-// KEYBOARD DECODER - Detects arrow keys from PS/2
-// =========================================================================
+// KEYBOARD DECODER Detects arrow keys from PS/2
+// Converts raw PS/2 bytes into boolean “left_arrow” or “right_arrow” flags
 module keyboard_decoder(
     input wire clk,
     input wire reset,
     input wire [7:0] ps2_data,
-    input wire ps2_valid,
+    input wire ps2_valid, // High for one clock cycle when new byte arrives
     output reg left_arrow,
     output reg right_arrow
 );
 
     // PS/2 scan codes
-    parameter LEFT_ARROW_CODE = 8'h6B;
+    parameter LEFT_ARROW_CODE = 8'h6B; ///found in document!!!
     parameter RIGHT_ARROW_CODE = 8'h74;
     parameter EXTENDED_CODE = 8'hE0;
-    parameter BREAK_CODE = 8'hF0;
+    parameter BREAK_CODE = 8'hF0; // Indicates that a key was released
     
-    // State machine states
+    //When you press LEFT arrow keyboard sends E0 6B
+    //When you release LEFT arrow keyboard sends E0 F0 6B
+
+    // State machine
     parameter WAIT_CODE = 2'b00;
-    parameter WAIT_EXTENDED = 2'b01;
-    parameter WAIT_BREAK = 2'b10;
+    parameter WAIT_EXTENDED = 2'b01; //Just saw an E0
+    parameter WAIT_BREAK = 2'b10; // Just saw an F0 (release code)
     
     reg [1:0] decode_state;
     reg waiting_for_break_after_extended;
@@ -192,18 +173,22 @@ module keyboard_decoder(
             left_arrow <= 0;
             right_arrow <= 0;
         end
-        else if (ps2_valid) begin
+        else if (ps2_valid) //whenever a complete byte has been received
+        begin
             case (decode_state)
-                WAIT_CODE: begin
-                    if (ps2_data == EXTENDED_CODE) begin
+                WAIT_CODE: 
+                begin
+                    if (ps2_data == EXTENDED_CODE) 
+                    begin
                         decode_state <= WAIT_EXTENDED;
                     end
-                    else if (ps2_data == BREAK_CODE) begin
+                    else if (ps2_data == BREAK_CODE) 
+                    begin
                         decode_state <= WAIT_BREAK;
                     end
                 end
-                
-                WAIT_EXTENDED: begin
+                WAIT_EXTENDED: 
+                begin
                     if (ps2_data == BREAK_CODE) begin
                         waiting_for_break_after_extended <= 1;
                         decode_state <= WAIT_BREAK;
@@ -220,8 +205,8 @@ module keyboard_decoder(
                         decode_state <= WAIT_CODE;
                     end
                 end
-                
-                WAIT_BREAK: begin
+                WAIT_BREAK: 
+                begin
                     if (waiting_for_break_after_extended) begin
                         if (ps2_data == LEFT_ARROW_CODE) begin
                             left_arrow <= 0;
@@ -242,40 +227,9 @@ module keyboard_decoder(
 endmodule
 
 
-// =========================================================================
-// HEX 7-SEGMENT DECODER
-// =========================================================================
-module hex7seg(
-    input wire [3:0] hex,
-    output reg [6:0] display
-);
-    always @(*) begin
-        case (hex)
-            4'h0: display = 7'b1000000;
-            4'h1: display = 7'b1111001;
-            4'h2: display = 7'b0100100;
-            4'h3: display = 7'b0110000;
-            4'h4: display = 7'b0011001;
-            4'h5: display = 7'b0010010;
-            4'h6: display = 7'b0000010;
-            4'h7: display = 7'b1111000;
-            4'h8: display = 7'b0000000;
-            4'h9: display = 7'b0010000;
-            4'hA: display = 7'b0001000;
-            4'hB: display = 7'b0000011;
-            4'hC: display = 7'b1000110;
-            4'hD: display = 7'b0100001;
-            4'hE: display = 7'b0000110;
-            4'hF: display = 7'b0001110;
-            default: display = 7'b1111111;
-        endcase
-    end
-endmodule
 
 
-// =========================================================================
-// SYNCHRONIZER - Prevents metastability
-// =========================================================================
+//taken from demo
 module sync(D, Resetn, Clock, Q);
     input wire D;
     input wire Resetn, Clock;

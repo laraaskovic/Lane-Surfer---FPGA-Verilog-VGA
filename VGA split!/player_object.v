@@ -72,7 +72,7 @@ module player_object(
     //output for the VGA INPUTS TO CONNECT WITH OTher file!
     reg [nX-1:0] vga_x_reg;
     reg [nY-1:0] vga_y_reg;
-    reg [COLOR_DEPTH-1:0] vga_color_reg;
+    reg [COLOR_DEPTH-1:0] vga_color_reg; //the minus one just so its 9 bits lke before!
     reg vga_write_reg; //enableee
     
     reg input_handled; //this is to try to remove holding the key
@@ -82,10 +82,21 @@ module player_object(
     //The centering offset makes sure the player is centered in its lane.
 
     //following function was found online but calculations were created on own, syntax is new though
+    //Explanation:
+    /*
+    This converts a lane number (0–4) into an actual X pixel coordinate for where the player should be drawn
+    - lane * LANE_WIDTH moves you horizontally across the screen.
+    - (LANE_WIDTH - PLAYER_WIDTH) / 2 centers the player within the lane.
+    - Adding LANE_START_X offsets everything so the first lane starts at pixel 120.
+    
+    130, 210, 290, 370, 450 (use function instead of hardcoding in case resolution changes (hopefully not again we pray))
+
+    */
     function [nX-1:0] lane_to_x;
-        input [2:0] lane;
+        input [2:0] lane; //based on lane its moving to find position
         begin
-        //Lane 2 → X = 120 + (2 × 80) + 10 = 290 pixels.
+            //Lane 2 → X = 120 + (2 × 80) + 10 = 290 pixels.
+
             lane_to_x = LANE_START_X + (lane * LANE_WIDTH) + ((LANE_WIDTH - PLAYER_WIDTH) / 2);
         end
     endfunction
@@ -209,7 +220,7 @@ module player_object(
     end
 
     //connect internal registers to VGA output ports
-    
+
     assign VGA_x = vga_x_reg;
     assign VGA_y = vga_y_reg;
     assign VGA_color = vga_color_reg;
