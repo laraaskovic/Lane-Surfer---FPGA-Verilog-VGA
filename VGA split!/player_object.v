@@ -5,7 +5,6 @@
  *
  * 640x480 VGA Resolution Version
  * - Player moves between 5 lanes
- * - Erases old position (white)
  * - Draws player at new position
  */
 
