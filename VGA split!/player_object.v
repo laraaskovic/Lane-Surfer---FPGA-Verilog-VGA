@@ -7,7 +7,7 @@
  * - Player moves between 5 lanes
  * - Draws player at new position
  */
-
+ 
 `default_nettype none  // Disables implicit net declarations
 
 module player_object(
