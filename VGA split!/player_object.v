@@ -10,7 +10,6 @@
 
 `default_nettype none  // Disables implicit net declarations
 
-
 module player_object(
     input wire Resetn,
     input wire Clock,
