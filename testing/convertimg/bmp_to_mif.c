@@ -16,8 +16,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define COLS 640
-#define ROWS 480
+#define COLS 60
+#define ROWS 60
 #define COLOR_DEPTH 9
 #define RGB COLOR_DEPTH / 3
 
