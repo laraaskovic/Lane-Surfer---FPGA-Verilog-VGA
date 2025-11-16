@@ -1,37 +1,4 @@
-
-
-/* ============================================================================
- * FILE 4: lane_runner_top.v
- * ============================================================================
- * 
- * TOP MODULE - Connects everything together
- * 
- * What it does:
- * - Instantiates player_object (player control)
- * - Instantiates multi_obstacle (obstacle manager)
- * - Instantiates game_over_handler (game state)
- * - Handles keyboard/PS2 input
- * - VGA arbitration (decides whether to draw player or obstacle pixels)
- * - Connects to VGA adapter
- * - LED display for debugging
- * 
- * VGA Arbitration:
- * - Obstacles have priority (drawn first)
- * - Player drawn on top of obstacles
- * - If both want to write, obstacle wins (simple priority)
- * 
- * Game Over Logic:
- * - When game_over=1, player Resetn is forced LOW
- * - This freezes the player in place
- * - Obstacles keep falling (visual effect)
- * 
- * CHANGE FROM YOUR ORIGINAL:
- * - Replace "simple_obstacle" with "multi_obstacle"
- * - Everything else identical!
- * 
- * Save as: lane_runner_top.v
- * ============================================================================
- */
+//KEY[3] = reset game
 
 `default_nettype none
 
@@ -54,6 +21,7 @@ module lane_runner_top(
     output wire VGA_CLK
 );
 
+    // VGA Parameters
     parameter nX = 10;
     parameter nY = 9;
     parameter COLOR_DEPTH = 9;
@@ -63,18 +31,18 @@ module lane_runner_top(
     wire move_left_kb, move_right_kb;
     wire move_left, move_right;
     
-    assign Resetn = KEY[3];
+    assign Resetn = KEY[3] | collision;
     assign move_left = move_left_key | move_left_kb;
     assign move_right = move_right_key | move_right_kb;
     
-    // Player signals
+    // Player Signals
     wire [2:0] player_lane;
     wire [nX-1:0] player_x;
     wire [nY-1:0] player_y;
     wire [COLOR_DEPTH-1:0] player_color;
     wire player_write;
     
-    // Obstacle signals
+    // Obstacle Signals
     wire [nX-1:0] obs_x;
     wire [nY-1:0] obs_y;
     wire [COLOR_DEPTH-1:0] obs_color;
@@ -82,27 +50,27 @@ module lane_runner_top(
     wire collision;
     wire game_over;
     
-    // PS/2 signals
+    // PS/2 Signals
     wire [7:0] ps2_key_data;
     wire ps2_key_pressed;
     
-    // VGA arbitration - simple priority encoder
+    // VGA Arbitor
     wire [nX-1:0] vga_x;
     wire [nY-1:0] vga_y;
     wire [COLOR_DEPTH-1:0] vga_color;
     wire vga_write;
     
-    // Obstacle has priority (drawn first, player can overlap)
+    // Obstacle has priority over player FLIPPPPP!!!!
     assign vga_x = obs_write ? obs_x : player_x;
     assign vga_y = obs_write ? obs_y : player_y;
     assign vga_color = obs_write ? obs_color : player_color;
     assign vga_write = obs_write | player_write;
     
-    // Button synchronizers
+    // Button Synchronizers
     sync left_sync (~KEY[1], Resetn, CLOCK_50, move_left_key);
     sync right_sync (~KEY[0], Resetn, CLOCK_50, move_right_key);
     
-    // PS/2 keyboard controller
+    // PS/2 Keyboard Controller
     PS2_Controller #(.INITIALIZE_MOUSE(0)) PS2 (
         .CLOCK_50(CLOCK_50),
         .reset(~Resetn),
@@ -116,7 +84,7 @@ module lane_runner_top(
         .received_data_en(ps2_key_pressed)
     );
     
-    // Keyboard decoder
+    // Keyboard Decoder
     keyboard_decoder KB_DEC (
         .clk(CLOCK_50),
         .reset(~Resetn),
@@ -126,9 +94,10 @@ module lane_runner_top(
         .right_arrow(move_right_kb)
     );
     
-    // Player object - freeze when game over
+    // Player Object - Freeze when game over
+    //FIX TO MAKE KEEP PLAYING
     player_object PLAYER (
-        .Resetn(Resetn & ~game_over),  // Freeze player on game over
+        .Resetn(Resetn & ~game_over),
         .Clock(CLOCK_50),
         .move_left(move_left),
         .move_right(move_right),
@@ -139,7 +108,6 @@ module lane_runner_top(
         .VGA_write(player_write)
     );
     
-    // CHANGED: Use multi_obstacle instead of simple_obstacle
     multi_obstacle OBSTACLES (
         .Resetn(Resetn),
         .Clock(CLOCK_50),
@@ -151,7 +119,7 @@ module lane_runner_top(
         .collision(collision)
     );
     
-    // Game over handler
+    // Game Over Handler
     game_over_handler GAME_OVER (
         .Resetn(Resetn),
         .Clock(CLOCK_50),
@@ -159,7 +127,7 @@ module lane_runner_top(
         .game_over(game_over)
     );
     
-    // VGA adapter
+    // VGA Adapter
     vga_adapter VGA (
         .resetn(Resetn),
         .clock(CLOCK_50),
@@ -179,18 +147,16 @@ module lane_runner_top(
         defparam VGA.RESOLUTION = "640x480";
         defparam VGA.BACKGROUND_IMAGE = "image.colour.mif";
     
-    // LED display for debugging
-    assign LEDR[2:0] = player_lane;    // Show current lane
-    assign LEDR[3] = collision;        // Lights up on collision
-    assign LEDR[4] = game_over;        // Stays lit when game over
+    // LED Display
+    assign LEDR[2:0] = player_lane;
+    assign LEDR[3] = collision;
+    assign LEDR[4] = game_over;
     assign LEDR[9:5] = 5'b0;
-    
-    assign HEX0 = 7'b1111111;  // Off
-    assign HEX1 = 7'b1111111;  // Off
     
 endmodule
 
-// Keyboard decoder and sync modules (unchanged from your original)
+
+// KEYBOARD DECODER
 module keyboard_decoder(
     input wire clk,
     input wire reset,
@@ -199,15 +165,19 @@ module keyboard_decoder(
     output reg left_arrow,
     output reg right_arrow
 );
+
     parameter LEFT_ARROW_CODE = 8'h6B;
     parameter RIGHT_ARROW_CODE = 8'h74;
     parameter EXTENDED_CODE = 8'hE0;
     parameter BREAK_CODE = 8'hF0;
+    
     parameter WAIT_CODE = 2'b00;
     parameter WAIT_EXTENDED = 2'b01;
     parameter WAIT_BREAK = 2'b10;
+    
     reg [1:0] decode_state;
     reg waiting_for_break_after_extended;
+    
     always @(posedge clk) begin
         if (reset) begin
             decode_state <= WAIT_CODE;
@@ -218,10 +188,12 @@ module keyboard_decoder(
         else if (ps2_valid) begin
             case (decode_state)
                 WAIT_CODE: begin
-                    if (ps2_data == EXTENDED_CODE)
+                    if (ps2_data == EXTENDED_CODE) begin
                         decode_state <= WAIT_EXTENDED;
-                    else if (ps2_data == BREAK_CODE)
+                    end
+                    else if (ps2_data == BREAK_CODE) begin
                         decode_state <= WAIT_BREAK;
+                    end
                 end
                 WAIT_EXTENDED: begin
                     if (ps2_data == BREAK_CODE) begin
@@ -236,15 +208,18 @@ module keyboard_decoder(
                         right_arrow <= 1;
                         decode_state <= WAIT_CODE;
                     end
-                    else
+                    else begin
                         decode_state <= WAIT_CODE;
+                    end
                 end
                 WAIT_BREAK: begin
                     if (waiting_for_break_after_extended) begin
-                        if (ps2_data == LEFT_ARROW_CODE)
+                        if (ps2_data == LEFT_ARROW_CODE) begin
                             left_arrow <= 0;
-                        else if (ps2_data == RIGHT_ARROW_CODE)
+                        end
+                        else if (ps2_data == RIGHT_ARROW_CODE) begin
                             right_arrow <= 0;
+                        end
                         waiting_for_break_after_extended <= 0;
                     end
                     decode_state <= WAIT_CODE;
@@ -253,13 +228,17 @@ module keyboard_decoder(
             endcase
         end
     end
+
 endmodule
 
+
+// SYNC
 module sync(D, Resetn, Clock, Q);
     input wire D;
     input wire Resetn, Clock;
     output reg Q;
     reg Qi;
+
     always @(posedge Clock) begin
         if (Resetn == 0) begin
             Qi <= 1'b0;
