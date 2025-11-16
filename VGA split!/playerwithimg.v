@@ -1,10 +1,11 @@
 /*
- * PLAYER_OBJECT.V - Simple addition of car MIF with transparency
+ * PLAYER_OBJECT.V - With Car Sprite Only
  * 
- * Only changes:
- * 1. Added car ROM to read car.mif
- * 2. Changed PLAYER_COLOR to read from ROM instead of solid cyan
- * 3. Added transparency check (skip writing transparent pixels)
+ * CHANGES FROM YOUR ORIGINAL:
+ * 1. Added car_rom to read from car_rom.qif
+ * 2. Changed PLAYER_COLOR to use car_pixel instead of solid cyan
+ * 3. Added transparency (skip magenta pixels)
+ * 4. Erase still uses white (will add background ROM later)
  */
 
 `default_nettype none
@@ -36,13 +37,10 @@ module player_object(
     parameter PLAYER_HEIGHT = 60;
     parameter PLAYER_Y_POS = 360;
     
-    // NEW: Transparency color
-    // Whatever color you use in car.mif for "empty" areas
-    parameter TRANSPARENT_COLOR = 9'b111_000_111;  // Magenta - change to match your car.mif
+    // NEW: Transparency color (magenta won't be drawn)
+    parameter TRANSPARENT_COLOR = 9'b111_000_111;  // Magenta
+    parameter ERASE_COLOR = 9'b111_111_111;  // White (temporary - will improve later)
     
-    parameter ERASE_COLOR  = 9'b111_111_111;  // White (erases)
-    
-    // FSM States (UNCHANGED)
     parameter INIT = 3'd0;
     parameter DRAW_INITIAL = 3'd1;
     parameter IDLE = 3'd2;
@@ -64,15 +62,14 @@ module player_object(
     
     reg input_handled;
     
-    // NEW: ROM signals for car image
-    wire [11:0] car_address;           // Address into car ROM (60x60 = 3600 pixels)
-    wire [COLOR_DEPTH-1:0] car_pixel;  // Color read from car ROM
+    // NEW: Car sprite ROM
+    wire [11:0] car_address;
+    wire [COLOR_DEPTH-1:0] car_pixel;
     
-    // NEW: Calculate address into car ROM
-    // For a 60x60 image: address = row * 60 + column
-    assign car_address = pixel_y * PLAYER_WIDTH + pixel_x;
+    // Calculate ROM address from pixel position
+    assign car_address = (pixel_y * PLAYER_WIDTH) + pixel_x;
     
-    // NEW: Instantiate ROM for car sprite
+    // Instantiate car ROM (from car_rom.qif)
     car_rom CAR_ROM (
         .address(car_address),
         .clock(Clock),
@@ -86,7 +83,6 @@ module player_object(
         end
     endfunction
 
-    // FSM (mostly UNCHANGED, just modified color assignments)
     always @(posedge Clock) begin
         if (!Resetn) begin
             state <= INIT;
@@ -96,7 +92,7 @@ module player_object(
             pixel_x <= 0;
             pixel_y <= 0;
             vga_write_reg <= 0;
-            vga_color_reg <= ERASE_COLOR;
+            vga_color_reg <= 9'b0;
             input_handled <= 0;
         end
         else begin
@@ -111,7 +107,7 @@ module player_object(
                 DRAW_INITIAL: begin
                     vga_x_reg <= player_x_pos + pixel_x;
                     vga_y_reg <= PLAYER_Y_POS + pixel_y;
-                    vga_color_reg <= car_pixel;  // CHANGED: Use ROM color instead of solid cyan
+                    vga_color_reg <= car_pixel;  // CHANGED: Use car sprite color
                     
                     // CHANGED: Only write if NOT transparent
                     vga_write_reg <= (car_pixel != TRANSPARENT_COLOR);
@@ -159,9 +155,10 @@ module player_object(
                 end
                 
                 ERASE: begin
+                    // Still using white for now (will add background ROM later)
                     vga_x_reg <= prev_x_pos + pixel_x;
                     vga_y_reg <= PLAYER_Y_POS + pixel_y;
-                    vga_color_reg <= ERASE_COLOR;  // Still white for now
+                    vga_color_reg <= ERASE_COLOR;  // White
                     vga_write_reg <= 1;
                     
                     if (pixel_x < PLAYER_WIDTH - 1)
@@ -181,7 +178,7 @@ module player_object(
                 DRAW: begin
                     vga_x_reg <= player_x_pos + pixel_x;
                     vga_y_reg <= PLAYER_Y_POS + pixel_y;
-                    vga_color_reg <= car_pixel;  // CHANGED: Use ROM color
+                    vga_color_reg <= car_pixel;  // CHANGED: Use car sprite color
                     
                     // CHANGED: Only write if NOT transparent
                     vga_write_reg <= (car_pixel != TRANSPARENT_COLOR);
@@ -209,25 +206,5 @@ module player_object(
     assign VGA_y = vga_y_reg;
     assign VGA_color = vga_color_reg;
     assign VGA_write = vga_write_reg;
-
-endmodule
-
-
-// NEW MODULE: ROM for car sprite (60x60 pixels)
-module car_rom(
-    input wire [11:0] address,   // 12 bits for 3600 pixels
-    input wire clock,
-    output reg [8:0] q           // 9-bit color
-);
-
-    reg [8:0] memory [0:3599];   // 60 * 60 = 3600 pixels
-    
-    initial begin
-        $readmemh("car.mif", memory);
-    end
-    
-    always @(posedge clock) begin
-        q <= memory[address];
-    end
 
 endmodule
