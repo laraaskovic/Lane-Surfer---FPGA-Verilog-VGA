@@ -19,6 +19,7 @@ module lane_runner_top(
     output wire VGA_CLK
 );
 
+
     parameter nX = 10;
     parameter nY = 9;
     parameter COLOR_DEPTH = 9;
