@@ -486,9 +486,9 @@ module multi_obstacle(
                 end
 
                 DRAW_OBS: begin
-                    // Only draw if obstacle is visible (y >= 0)
+                    // Only draw if obstacle is FULLY visible (y >= 0) to prevent top glitching
                     if (current_obs == 0) begin
-                        if (active0 && obs_y0 >= 0 && obs_y0 < YSCREEN) begin
+                        if (active0 && obs_y0 >= -10 && obs_y0 < YSCREEN) begin
                             current_drawing_image <= obs_image0;
                             vga_x_reg <= obs_x0 + pixel_x;
                             vga_y_reg <= obs_y0[8:0] + pixel_y;
@@ -516,7 +516,7 @@ module multi_obstacle(
                     end
 
                     else if (current_obs == 1) begin
-                        if (active1 && obs_y1 >= 0 && obs_y1 < YSCREEN) begin
+                        if (active1 && obs_y1 >= -10 && obs_y1 < YSCREEN) begin
                             current_drawing_image <= obs_image1;
                             vga_x_reg <= obs_x1 + pixel_x;
                             vga_y_reg <= obs_y1[8:0] + pixel_y;
@@ -544,7 +544,7 @@ module multi_obstacle(
                     end
 
                     else if (current_obs == 2) begin
-                        if (active2 && obs_y2 >= 0 && obs_y2 < YSCREEN) begin
+                        if (active2 && obs_y2 >= -10 && obs_y2 < YSCREEN) begin
                             current_drawing_image <= obs_image2;
                             vga_x_reg <= obs_x2 + pixel_x;
                             vga_y_reg <= obs_y2[8:0] + pixel_y;
@@ -572,7 +572,7 @@ module multi_obstacle(
                     end
 
                     else if (current_obs == 3) begin
-                        if (active3 && obs_y3 >= 0 && obs_y3 < YSCREEN) begin
+                        if (active3 && obs_y3 >= -10 && obs_y3 < YSCREEN) begin
                             current_drawing_image <= obs_image3;
                             vga_x_reg <= obs_x3 + pixel_x;
                             vga_y_reg <= obs_y3[8:0] + pixel_y;
@@ -601,7 +601,7 @@ module multi_obstacle(
 
                     // NEW: Draw 5th obstacle
                     else if (current_obs == 4) begin
-                        if (active4 && obs_y4 >= 0 && obs_y4 < YSCREEN) begin
+                        if (active4 && obs_y4 >= -10 && obs_y4 < YSCREEN) begin
                             current_drawing_image <= obs_image4;
                             vga_x_reg <= obs_x4 + pixel_x;
                             vga_y_reg <= obs_y4[8:0] + pixel_y;
